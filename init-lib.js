@@ -61,20 +61,21 @@ const packageJsonContent = {
   description: '',
   main: 'index.js',
   scripts: {
-    start: 'nodemon --watch src/**/*.ts --exec ts-node manualTest.ts',
-    test: 'jest',
     build: 'tsc',
-    lint: 'eslint .',
-    'lint:fix': 'eslint . --no-cache --fix',
-    format: 'prettier --write .',
-    release: 'semantic-release',
-    'type-check': 'tsc --noEmit',
-    prebump:
-      'npm run format && npm run lint && npm run type-check && npm run test',
-    precommit: 'npm run lint && npm run test',
-    postcommit: 'echo "Commit complete!"',
-    prepare: 'husky install',
-    pack: 'npm pack && mv *.tgz dist/',
+    "type-check": "tsc --noEmit",
+    test: "jest",
+    "test:adhoc": "ts-node __tests__/adHoc.ts",
+    "test:adhoc:watch": "nodemon --watch src/**/*.ts --exec ts-node __tests__/adHoc.ts",
+    lint: "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prettier:check": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    release: "semantic-release",
+    "pre-bump": "npm run prettier:check && npm run lint && npm run type-check && npm run test",
+    "pre-commit": "npm run lint && npm run test",
+    "pre-commit": "echo 'Commit complete!'",
+    prepare: "husky install",
+    pack: "npm pack && cross-env-shell mv *.tgz dist/ || move *.tgz dist/"
   },
   keywords: [],
   author: githubUsername,
@@ -89,6 +90,7 @@ const packageJsonContent = {
     '@types/jest': '^29.5.12',
     '@typescript-eslint/eslint-plugin': '^8.1.0',
     '@typescript-eslint/parser': '^8.1.0',
+    "cross-env-shell": "^7.0.3",
     eslint: '^9.9.0',
     'eslint-config-prettier': '^9.1.0',
     'eslint-plugin-prettier': '^5.2.1',
@@ -100,6 +102,16 @@ const packageJsonContent = {
     'ts-jest': '^29.2.4',
     typescript: '^5.5.4',
   },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
 }
 const gitIgnoreContent = `
 # Node modules
@@ -255,9 +267,8 @@ module.exports = {
   testEnvironment: 'node',
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/lib/',
-    '/__tests__/manualTest.ts',
-  ],
+    '/lib/'
+  ]
 }
 `
 const npmIgnoreContent = `
@@ -385,25 +396,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: '20.x'
+
+      - name: Print Node.js and npm versions
+        run: node -v && npm -v
 
       - name: Install dependencies
         run: npm install
 
-      - name: Print Node.js version
-        run: node -v
+      - name: Check code formatting
+        run: npm run prettier:check
 
-      - name: Print npm version
-        run: npm -v
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
 
       - name: Run Semantic Release
         env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: \${{ secrets.P_GITHUB_TOKEN }}
           NPM_TOKEN: \${{ secrets.NPM_TOKEN }}
         run: npm run release
 `
